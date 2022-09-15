@@ -21,7 +21,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
-;PrivilegesRequired=lowest
+PrivilegesRequired=admin
 OutputDir=C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\installers
 OutputBaseFilename=rango_makers_launcher
 SetupIconFile=C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\windows\runner\resources\app_icon.ico
@@ -39,10 +39,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\build\windows\runner\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\build\windows\runner\Release\flutter_windows.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\build\windows\runner\Release\window_size_plugin.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\build\windows\runner\Release\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\build\windows\runner\Release\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\build\windows\runner\Release\msvcp140.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\Users\lukit\Desktop\projetos\rango\Rango-Dashboard-Launcher\build\windows\runner\Release\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
+Name: "{commonstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
