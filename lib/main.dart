@@ -49,7 +49,7 @@ class _DownloaderState extends State<Downloader> {
   double percentage = 0;
   var path = Platform.resolvedExecutable.split('rangolauncher.exe')[0];
   var app = Platform.environment["AppData"];
-  bool isDownload = true;
+  bool isUnzipping = false;
   bool isCheckin = false;
   CancelToken cancelToken = CancelToken();
   String fileName = '';
@@ -58,10 +58,6 @@ class _DownloaderState extends State<Downloader> {
   Future<void> download(String file, String pathToSave) async {
     try {
       var dio = Dio();
-      // setState(() {
-      //   isDownload = true;
-      //   fileName = file;
-      // });
       await dio.download(
         'https://s3.sa-east-1.amazonaws.com/rango.dashboard/$file',
         '$pathToSave',
@@ -74,21 +70,27 @@ class _DownloaderState extends State<Downloader> {
         deleteOnError: true,
       );
       if (file.contains('.zip') && !cancelToken.isCancelled) {
-        await unzip(pathToSave);
+        setState(() {
+          isUnzipping = true;
+        });
       }
-      // setState(() {
-      //   isDownload = false;
-      // });
-
     } on DioError catch (e) {
-      print(e.error);
-      print(e..message);
-      if (e.type == DioErrorType.cancel) {
-        // Handle the cancel error
-      } else {
-        // Handle other errors
-      }
+      setState(() {
+        message = e.message;
+      });
     }
+  }
+
+  Future<void> unzip() async {
+    var shell = Shell();
+    var path = '${app}\\rango\\${getZipArchiveName()}';
+    setState(() {
+      message = 'Descompactando a pasta';
+    });
+    await shell.run('''
+        @echo off
+        tar -xf $path -C $app\\rango
+    ''');
   }
 
   void unzipWithArchive() {
@@ -125,22 +127,12 @@ class _DownloaderState extends State<Downloader> {
     cancelToken = CancelToken();
     setState(() {
       message = 'Transferindo $fileName';
+      isUnzipping = false;
     });
     for (int i = 0; i < filesToDownload.length; i++) {
       await download(
           filesToDownload[i], '${app}\\rango\\${filesToDownload[i]}');
     }
-  }
-
-  Future<void> unzip(String path) async {
-    var shell = Shell();
-    setState(() {
-      message = 'Descompactando a pasta';
-    });
-    await shell.run('''
-        @echo off
-        tar -xf $path -C $app\\rango
-    ''');
   }
 
   Future<void> launch() async {
@@ -194,17 +186,20 @@ class _DownloaderState extends State<Downloader> {
     });
     if (needUpdate == true) {
       await downloadFiles();
-    }
-    if (!cancelToken.isCancelled) {
+    } else {
       setState(() {
         percentage = 100;
       });
-      await Future.delayed(Duration(milliseconds: 300));
       await startMakersApplication();
     }
   }
 
   Future<void> startMakersApplication() async {
+    setState(() {
+      isUnzipping = false;
+    });
+
+    await Future.delayed(Duration(milliseconds: 300));
     await launch();
     await closeLauncher();
   }
@@ -230,6 +225,25 @@ class _DownloaderState extends State<Downloader> {
     }
   }
 
+  Widget getDefaultButton(String text, Function onTap) {
+    return GestureDetector(
+      onTap: () async {
+        onTap();
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        child: Text(
+          text,
+          style: TextStyle(
+              color: Colors.orange, fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+        decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange, width: 2)),
+      ),
+    );
+  }
+
   @override
   void initState() {
     Future.delayed(Duration.zero, () async {
@@ -251,54 +265,71 @@ class _DownloaderState extends State<Downloader> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              message,
+              isUnzipping
+                  ? "Escolha o método de descompactação de arquivos"
+                  : message,
               style: TextStyle(
                   color: Colors.orange,
                   fontWeight: FontWeight.w600,
                   fontSize: 20),
             ),
             SizedBox(height: 10),
-            SizedBox(
-              width: 150.0,
-              height: 150.0,
-              child: LiquidCircularProgressIndicator(
-                value: percentage / 100,
-                backgroundColor: Colors.blueGrey[800],
-                valueColor: AlwaysStoppedAnimation(Colors.orange[400]!),
-                borderColor: Colors.orange,
-                borderWidth: 2.0,
-                center: Text(
-                  "${percentage.toInt()}%",
-                  style: TextStyle(
-                    color: Colors.orange[100],
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
+            isUnzipping
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      getDefaultButton(
+                        "Padrão",
+                        () async {
+                          await unzip();
+                          startMakersApplication();
+                        },
+                      ),
+                      SizedBox(
+                        width: 16,
+                      ),
+                      getDefaultButton(
+                        "Especial",
+                        () {
+                          unzipWithArchive();
+                          startMakersApplication();
+                        },
+                      )
+                    ],
+                  )
+                : Column(
+                    children: [
+                      SizedBox(
+                        width: 150.0,
+                        height: 150.0,
+                        child: LiquidCircularProgressIndicator(
+                          value: percentage / 100,
+                          backgroundColor: Colors.blueGrey[800],
+                          valueColor:
+                              AlwaysStoppedAnimation(Colors.orange[400]!),
+                          borderColor: Colors.orange,
+                          borderWidth: 2.0,
+                          center: Text(
+                            "${percentage.toInt()}%",
+                            style: TextStyle(
+                              color: Colors.orange[100],
+                              fontSize: 20.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 10,
+                      ),
+                      getDefaultButton(
+                        "Reiniciar download",
+                        () async {
+                          await restartDownload();
+                        },
+                      )
+                    ],
                   ),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            GestureDetector(
-              onTap: () async {
-                print("restart download");
-                await restartDownload();
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                child: Text(
-                  "Reiniciar download",
-                  style: TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16),
-                ),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange, width: 2)),
-              ),
-            )
           ],
         ),
       ),
