@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -90,19 +91,49 @@ class _DownloaderState extends State<Downloader> {
     }
   }
 
-  Future<void> downloadFiles(List<String> files) async {
+  void unzipWithArchive() {
+    final bytes =
+        File('${app}\\rango\\${getZipArchiveName()}').readAsBytesSync();
+
+    // Decode the Zip file
+    final archive = ZipDecoder().decodeBytes(bytes);
+
+    // Extract the contents of the Zip archive to disk.
+    for (final file in archive) {
+      final filename = file.name;
+      if (file.isFile) {
+        final data = file.content as List<int>;
+        File('${app}\\rango\\' + filename)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(data);
+      } else {
+        Directory('${app}\\rango\\' + filename).create(recursive: true);
+      }
+    }
+  }
+
+  String getZipArchiveName() {
+    for (int i = 0; i < filesToDownload.length; i++) {
+      if (filesToDownload[i].contains('.zip')) {
+        return filesToDownload[i];
+      }
+    }
+    return '';
+  }
+
+  Future<void> downloadFiles() async {
     cancelToken = CancelToken();
     setState(() {
       message = 'Transferindo $fileName';
     });
-    for (int i = 0; i < files.length; i++) {
-      await download(files[i], '${app}\\rango\\${files[i]}');
+    for (int i = 0; i < filesToDownload.length; i++) {
+      await download(
+          filesToDownload[i], '${app}\\rango\\${filesToDownload[i]}');
     }
   }
 
   Future<void> unzip(String path) async {
     var shell = Shell();
-    print("bbbbbb");
     setState(() {
       message = 'Descompactando a pasta';
     });
@@ -162,7 +193,7 @@ class _DownloaderState extends State<Downloader> {
       isCheckin = false;
     });
     if (needUpdate == true) {
-      await downloadFiles(filesToDownload);
+      await downloadFiles();
     }
     if (!cancelToken.isCancelled) {
       setState(() {
@@ -193,7 +224,7 @@ class _DownloaderState extends State<Downloader> {
       message = 'Deletando os arquivo e reiniciando o download';
     });
     deleteRemainArchives();
-    await downloadFiles(filesToDownload);
+    await downloadFiles();
     if (!cancelToken.isCancelled) {
       await startMakersApplication();
     }
