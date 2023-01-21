@@ -49,7 +49,8 @@ class _DownloaderState extends State<Downloader> {
   double percentage = 0;
   var path = Platform.resolvedExecutable.split('rangolauncher.exe')[0];
   var app = Platform.environment["AppData"];
-  bool isUnzipping = false;
+  bool showUnzipOptions = false;
+  bool unzipping = false;
   bool isCheckin = false;
   CancelToken cancelToken = CancelToken();
   String fileName = '';
@@ -71,7 +72,7 @@ class _DownloaderState extends State<Downloader> {
       );
       if (file.contains('.zip') && !cancelToken.isCancelled) {
         setState(() {
-          isUnzipping = true;
+          showUnzipOptions = true;
         });
       }
     } on DioError catch (e) {
@@ -82,6 +83,9 @@ class _DownloaderState extends State<Downloader> {
   }
 
   Future<void> unzip() async {
+    setState(() {
+      unzipping = true;
+    });
     var shell = Shell();
     var path = '${app}\\rango\\${getZipArchiveName()}';
     setState(() {
@@ -91,9 +95,15 @@ class _DownloaderState extends State<Downloader> {
         @echo off
         tar -xf $path -C $app\\rango
     ''');
+    setState(() {
+      unzipping = false;
+    });
   }
 
   void unzipWithArchive() {
+    setState(() {
+      unzipping = true;
+    });
     final bytes =
         File('${app}\\rango\\${getZipArchiveName()}').readAsBytesSync();
 
@@ -112,6 +122,9 @@ class _DownloaderState extends State<Downloader> {
         Directory('${app}\\rango\\' + filename).create(recursive: true);
       }
     }
+    setState(() {
+      unzipping = false;
+    });
   }
 
   String getZipArchiveName() {
@@ -127,7 +140,7 @@ class _DownloaderState extends State<Downloader> {
     cancelToken = CancelToken();
     setState(() {
       message = 'Transferindo $fileName';
-      isUnzipping = false;
+      showUnzipOptions = false;
     });
     for (int i = 0; i < filesToDownload.length; i++) {
       await download(
@@ -196,7 +209,7 @@ class _DownloaderState extends State<Downloader> {
 
   Future<void> startMakersApplication() async {
     setState(() {
-      isUnzipping = false;
+      showUnzipOptions = false;
     });
 
     await Future.delayed(Duration(milliseconds: 300));
@@ -265,7 +278,7 @@ class _DownloaderState extends State<Downloader> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              isUnzipping
+              showUnzipOptions
                   ? "Escolha o método de descompactação de arquivos"
                   : message,
               style: TextStyle(
@@ -274,28 +287,34 @@ class _DownloaderState extends State<Downloader> {
                   fontSize: 20),
             ),
             SizedBox(height: 10),
-            isUnzipping
+            showUnzipOptions
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [
-                      getDefaultButton(
-                        "Padrão",
-                        () async {
-                          await unzip();
-                          startMakersApplication();
-                        },
-                      ),
-                      SizedBox(
-                        width: 16,
-                      ),
-                      getDefaultButton(
-                        "Especial",
-                        () {
-                          unzipWithArchive();
-                          startMakersApplication();
-                        },
-                      )
-                    ],
+                    children: unzipping
+                        ? [
+                            CircularProgressIndicator(
+                              color: Colors.orange,
+                            )
+                          ]
+                        : [
+                            getDefaultButton(
+                              "Padrão",
+                              () async {
+                                await unzip();
+                                startMakersApplication();
+                              },
+                            ),
+                            SizedBox(
+                              width: 16,
+                            ),
+                            getDefaultButton(
+                              "Especial",
+                              () {
+                                unzipWithArchive();
+                                startMakersApplication();
+                              },
+                            )
+                          ],
                   )
                 : Column(
                     children: [
