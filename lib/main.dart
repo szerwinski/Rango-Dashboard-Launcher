@@ -233,9 +233,6 @@ class _DownloaderState extends State<Downloader> {
     });
     deleteRemainArchives();
     await downloadFiles();
-    if (!cancelToken.isCancelled) {
-      await startMakersApplication();
-    }
   }
 
   Widget getDefaultButton(String text, Function onTap) {
