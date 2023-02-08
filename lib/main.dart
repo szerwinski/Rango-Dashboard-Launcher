@@ -55,6 +55,7 @@ class _DownloaderState extends State<Downloader> {
   CancelToken cancelToken = CancelToken();
   String fileName = '';
   String message = '';
+  String? compileError;
   List<String> filesToDownload = [];
   Future<void> download(String file, String pathToSave) async {
     try {
@@ -84,13 +85,12 @@ class _DownloaderState extends State<Downloader> {
 
   Future<void> unzip() async {
     setState(() {
+      compileError = null;
       unzipping = true;
+      message = 'Descompactando a pasta';
     });
     var shell = Shell();
     var path = '${app}\\rango\\${getZipArchiveName()}';
-    setState(() {
-      message = 'Descompactando a pasta';
-    });
     await shell.run('''
         @echo off
         tar -xf $path -C $app\\rango
@@ -100,10 +100,14 @@ class _DownloaderState extends State<Downloader> {
     });
   }
 
-  void unzipWithArchive() {
+  Future<void> unzipWithArchive() async {
     setState(() {
+      compileError = null;
       unzipping = true;
+      message = 'Descompactando a pasta';
     });
+
+    await Future.delayed(Duration(seconds: 1));
     final bytes =
         File('${app}\\rango\\${getZipArchiveName()}').readAsBytesSync();
 
@@ -276,8 +280,11 @@ class _DownloaderState extends State<Downloader> {
           children: [
             Text(
               showUnzipOptions
-                  ? "Escolha o método de descompactação de arquivos"
+                  ? unzipping
+                      ? message
+                      : "Escolha o método de descompactação de arquivos"
                   : message,
+              textAlign: TextAlign.center,
               style: TextStyle(
                   color: Colors.orange,
                   fontWeight: FontWeight.w600,
@@ -297,8 +304,18 @@ class _DownloaderState extends State<Downloader> {
                             getDefaultButton(
                               "Padrão",
                               () async {
-                                await unzip();
-                                startMakersApplication();
+                                try {
+                                  await unzip();
+                                  await startMakersApplication();
+                                } catch (err) {
+                                  setState(() {
+                                    showUnzipOptions = true;
+                                    unzipping = false;
+                                    compileError =
+                                        'Ocorreu um erro no método padrão, selecione o método especial';
+                                  });
+                                  print(err);
+                                }
                               },
                             ),
                             SizedBox(
@@ -306,11 +323,20 @@ class _DownloaderState extends State<Downloader> {
                             ),
                             getDefaultButton(
                               "Especial",
-                              () {
-                                unzipWithArchive();
-                                startMakersApplication();
+                              () async {
+                                try {
+                                  await unzipWithArchive();
+                                  await startMakersApplication();
+                                } catch (err) {
+                                  setState(() {
+                                    showUnzipOptions = true;
+                                    unzipping = false;
+                                    compileError =
+                                        'Ocorreu um erro no método especial, selecione o método padrão';
+                                  });
+                                }
                               },
-                            )
+                            ),
                           ],
                   )
                 : Column(
@@ -346,6 +372,18 @@ class _DownloaderState extends State<Downloader> {
                       )
                     ],
                   ),
+            SizedBox(
+              height: 10,
+            ),
+            if (compileError != null)
+              Text(
+                compileError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14),
+              ),
           ],
         ),
       ),
