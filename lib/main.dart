@@ -13,8 +13,6 @@ import 'package:window_size/window_size.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setWindowTitle('RanGo Launcher');
-  setWindowMinSize(const Size(300, 300));
-  setWindowMaxSize(const Size(300, 300));
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
 
   LaunchAtStartup.instance.setup(
