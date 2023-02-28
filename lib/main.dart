@@ -182,6 +182,9 @@ class _DownloaderState extends State<Downloader> {
     if (versionExists && dashExists) {
       final contents = await verison.readAsString();
       var json = jsonDecode(contents);
+      print(json["release"]);
+      print(response.data["release"]);
+      print(json["release"] == response.data["release"]);
       if (json["release"] == response.data["release"]) {
         return false;
       } else {
@@ -221,20 +224,37 @@ class _DownloaderState extends State<Downloader> {
 
   void deleteRemainArchives() {
     final dir = Directory('$app\\rango');
-    dir.deleteSync(recursive: true);
+    if (dir.existsSync()) {
+      dir.deleteSync(recursive: true);
+    }
   }
 
   Future<void> restartDownload() async {
     setState(() {
       message = 'Reiniciando o download da aplicação';
     });
-    cancelToken.cancel();
+    if (!cancelToken.isCancelled) {
+      cancelToken.cancel();
+    }
     await Future.delayed(Duration(seconds: 1));
     setState(() {
       message = 'Deletando os arquivo e reiniciando o download';
     });
-    deleteRemainArchives();
-    await downloadFiles();
+    try {
+      deleteRemainArchives();
+      if (filesToDownload.isEmpty) {
+        syncInit();
+      } else {
+        await downloadFiles();
+      }
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.toString()),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 10),
+      ));
+    }
   }
 
   Widget getDefaultButton(String text, Function onTap) {
