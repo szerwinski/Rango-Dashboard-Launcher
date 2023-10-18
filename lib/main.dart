@@ -154,8 +154,10 @@ class _DownloaderState extends State<Downloader> {
     setState(() {
       message = 'Iniciando a aplicação';
     });
-    await Shell()
-      ..runExecutableArguments('${app}\\rango\\rango_dashboard.exe', []);
+    var shell = Shell();
+    Directory.current = '$app\\rango';
+    await shell
+      ..runExecutableArguments('rango_dashboard.exe', []);
   }
 
   Future<void> closeLauncher() async {
