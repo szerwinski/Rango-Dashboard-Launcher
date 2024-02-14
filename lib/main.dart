@@ -10,6 +10,22 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:process_run/shell.dart';
 import 'package:window_size/window_size.dart';
 
+class MyHttpoverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
+        final isValidHost = [
+          "api.rangosemfila.com.br",
+          "www.api.rangosemfila.com.br",
+          "s3.sa-east-1.amazonaws.com",
+          "www.s3.sa-east-1.amazonaws.com"
+        ].contains(host); // <-- allow only hosts in array
+        return isValidHost;
+      };
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setWindowTitle('RanGo Launcher');
@@ -22,6 +38,7 @@ Future<void> main() async {
   await LaunchAtStartup.instance.enable();
   bool isEnabled = await LaunchAtStartup.instance.isEnabled();
   print(isEnabled);
+  HttpOverrides.global = new MyHttpoverrides();
   runApp(MyApp());
 }
 
