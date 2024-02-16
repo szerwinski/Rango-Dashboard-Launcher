@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "RanGo Makers Launcher"
-#define MyAppVersion "1.1.6"
+#define MyAppVersion "1.1.7"
 #define MyAppPublisher "RanGo"
 #define MyAppURL "https://www.rangosemfila.com.br/"
 #define MyAppExeName "rangolauncher.exe"
