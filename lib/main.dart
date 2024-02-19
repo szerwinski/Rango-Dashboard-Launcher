@@ -162,6 +162,9 @@ class _DownloaderState extends State<Downloader> {
       showUnzipOptions = false;
     });
     for (int i = 0; i < filesToDownload.length; i++) {
+      if (filesToDownload[i].contains('.zip') && _isWindows11()) {
+        filesToDownload[i] = 'compiled/compiled-win-11.zip';
+      }
       await download(
           filesToDownload[i], '${app}\\rango\\${filesToDownload[i]}');
     }
@@ -185,6 +188,16 @@ class _DownloaderState extends State<Downloader> {
     ''');
   }
 
+  bool _isWindows11() {
+    // Windows 11 version numbers typically start with 10.0
+    // and the build number is greater than or equal to 22000
+    var version = Platform.operatingSystemVersion;
+    var buildNumber =
+        int.tryParse(version.split('Build ').last.replaceAll(')', '')) ?? 0;
+    print(buildNumber);
+    return buildNumber >= 22000;
+  }
+
   Future<bool> checkIfNeedUpdate() async {
     setState(() {
       isCheckin = true;
@@ -203,7 +216,11 @@ class _DownloaderState extends State<Downloader> {
       var json = jsonDecode(contents);
       print(json["release"]);
       print(response.data["release"]);
+      print(response.data["files"]);
       print(json["release"] == response.data["release"]);
+      print(Platform.operatingSystem);
+      print(Platform.operatingSystemVersion);
+      print(_isWindows11());
       if (json["release"] == response.data["release"]) {
         return false;
       } else {
