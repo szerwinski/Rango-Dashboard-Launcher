@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -75,10 +76,30 @@ class _DownloaderState extends State<Downloader> {
   Future<void> download(String file, String pathToSave) async {
     try {
       var dio = Dio();
+      (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate =
+          (HttpClient dioClient) {
+        dioClient.badCertificateCallback =
+            ((X509Certificate cert, String host, int port) {
+          var isValidHost = [
+            "api.rangosemfila.com.br",
+            "www.api.rangosemfila.com.br",
+            "s3.sa-east-1.amazonaws.com",
+            "www.s3.sa-east-1.amazonaws.com"
+          ].contains(host); // <-- allow only hosts in array
+          return isValidHost;
+        });
+        return dioClient;
+      };
       await dio.download(
         'https://s3.sa-east-1.amazonaws.com/rango.dashboard/$file',
         '$pathToSave',
         cancelToken: cancelToken,
+        options: Options(
+          followRedirects: false,
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
         onReceiveProgress: (rcv, total) {
           setState(() {
             percentage = ((rcv / total) * 100);
