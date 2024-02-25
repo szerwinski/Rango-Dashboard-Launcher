@@ -10,6 +10,22 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:process_run/shell.dart';
 import 'package:window_size/window_size.dart';
 
+class MyHttpoverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
+        final isValidHost = [
+          "api.rangosemfila.com.br",
+          "www.api.rangosemfila.com.br",
+          "s3.sa-east-1.amazonaws.com",
+          "www.s3.sa-east-1.amazonaws.com"
+        ].contains(host); // <-- allow only hosts in array
+        return isValidHost;
+      };
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setWindowTitle('RanGo Launcher');
@@ -22,6 +38,7 @@ Future<void> main() async {
   await LaunchAtStartup.instance.enable();
   bool isEnabled = await LaunchAtStartup.instance.isEnabled();
   print(isEnabled);
+  HttpOverrides.global = new MyHttpoverrides();
   runApp(MyApp());
 }
 
@@ -145,6 +162,9 @@ class _DownloaderState extends State<Downloader> {
       showUnzipOptions = false;
     });
     for (int i = 0; i < filesToDownload.length; i++) {
+      if (filesToDownload[i].contains('.zip') && _isWindows11()) {
+        filesToDownload[i] = 'compiled/compiled-win-11.zip';
+      }
       await download(
           filesToDownload[i], '${app}\\rango\\${filesToDownload[i]}');
     }
@@ -154,8 +174,10 @@ class _DownloaderState extends State<Downloader> {
     setState(() {
       message = 'Iniciando a aplicação';
     });
-    await Shell()
-      ..runExecutableArguments('${app}\\rango\\rango_dashboard.exe', []);
+    var shell = Shell();
+    Directory.current = '$app\\rango';
+    await shell
+      ..runExecutableArguments('rango_dashboard.exe', []);
   }
 
   Future<void> closeLauncher() async {
@@ -164,6 +186,16 @@ class _DownloaderState extends State<Downloader> {
        @echo off
        taskkill /F /IM rangolauncher.exe
     ''');
+  }
+
+  bool _isWindows11() {
+    // Windows 11 version numbers typically start with 10.0
+    // and the build number is greater than or equal to 22000
+    var version = Platform.operatingSystemVersion;
+    var buildNumber =
+        int.tryParse(version.split('Build ').last.replaceAll(')', '')) ?? 0;
+    print(buildNumber);
+    return buildNumber >= 22000;
   }
 
   Future<bool> checkIfNeedUpdate() async {
@@ -182,6 +214,13 @@ class _DownloaderState extends State<Downloader> {
     if (versionExists && dashExists) {
       final contents = await verison.readAsString();
       var json = jsonDecode(contents);
+      print(json["release"]);
+      print(response.data["release"]);
+      print(response.data["files"]);
+      print(json["release"] == response.data["release"]);
+      print(Platform.operatingSystem);
+      print(Platform.operatingSystemVersion);
+      print(_isWindows11());
       if (json["release"] == response.data["release"]) {
         return false;
       } else {
@@ -221,20 +260,37 @@ class _DownloaderState extends State<Downloader> {
 
   void deleteRemainArchives() {
     final dir = Directory('$app\\rango');
-    dir.deleteSync(recursive: true);
+    if (dir.existsSync()) {
+      dir.deleteSync(recursive: true);
+    }
   }
 
   Future<void> restartDownload() async {
     setState(() {
       message = 'Reiniciando o download da aplicação';
     });
-    cancelToken.cancel();
+    if (!cancelToken.isCancelled) {
+      cancelToken.cancel();
+    }
     await Future.delayed(Duration(seconds: 1));
     setState(() {
       message = 'Deletando os arquivo e reiniciando o download';
     });
-    deleteRemainArchives();
-    await downloadFiles();
+    try {
+      deleteRemainArchives();
+      if (filesToDownload.isEmpty) {
+        syncInit();
+      } else {
+        await downloadFiles();
+      }
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.toString()),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 10),
+      ));
+    }
   }
 
   Widget getDefaultButton(String text, Function onTap) {

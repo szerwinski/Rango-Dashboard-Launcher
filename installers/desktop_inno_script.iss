@@ -2,15 +2,15 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "RanGo Makers Launcher"
-#define MyAppVersion "1.1.2"
+#define MyAppVersion "1.1.7"
 #define MyAppPublisher "RanGo"
 #define MyAppURL "https://www.rangosemfila.com.br/"
 #define MyAppExeName "rangolauncher.exe"
 
 [Setup]
-SignTool=signtool
+;SignTool=signtool
 Uninstallable=yes
-SignedUninstaller=yes
+;SignedUninstaller=yes
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{0D15CE0B-6FC5-45BB-9435-C35BC53DBDB7}
