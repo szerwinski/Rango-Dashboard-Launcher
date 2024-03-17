@@ -90,8 +90,9 @@ class _DownloaderState extends State<Downloader> {
         });
         return dioClient;
       };
+      var url = 'https://s3.sa-east-1.amazonaws.com/rango.dashboard/$file';
       await dio.download(
-        'https://s3.sa-east-1.amazonaws.com/rango.dashboard/$file',
+        url,
         '$pathToSave',
         cancelToken: cancelToken,
         options: Options(
@@ -184,11 +185,16 @@ class _DownloaderState extends State<Downloader> {
     });
     for (int i = 0; i < filesToDownload.length; i++) {
       if (filesToDownload[i].contains('.zip') && _isWindows11()) {
-        filesToDownload[i] = 'compiled/compiled-win-11.zip';
+        filesToDownload[i] = 'compiled-win-11.zip';
       }
       await download(
-          filesToDownload[i], '${app}\\rango\\${filesToDownload[i]}');
+          (filesToDownload[i].contains('.zip') ? 'compiled/' : '') +
+              filesToDownload[i],
+          '${app}\\rango\\${filesToDownload[i]}');
     }
+    setState(() {
+      showUnzipOptions = true;
+    });
   }
 
   Future<void> launch() async {
@@ -235,13 +241,6 @@ class _DownloaderState extends State<Downloader> {
     if (versionExists && dashExists) {
       final contents = await verison.readAsString();
       var json = jsonDecode(contents);
-      print(json["release"]);
-      print(response.data["release"]);
-      print(response.data["files"]);
-      print(json["release"] == response.data["release"]);
-      print(Platform.operatingSystem);
-      print(Platform.operatingSystemVersion);
-      print(_isWindows11());
       if (json["release"] == response.data["release"]) {
         return false;
       } else {
@@ -300,7 +299,7 @@ class _DownloaderState extends State<Downloader> {
     try {
       deleteRemainArchives();
       if (filesToDownload.isEmpty) {
-        syncInit();
+        await syncInit();
       } else {
         await downloadFiles();
       }
