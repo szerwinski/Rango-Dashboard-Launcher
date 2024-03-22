@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -75,10 +76,31 @@ class _DownloaderState extends State<Downloader> {
   Future<void> download(String file, String pathToSave) async {
     try {
       var dio = Dio();
+      (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate =
+          (HttpClient dioClient) {
+        dioClient.badCertificateCallback =
+            ((X509Certificate cert, String host, int port) {
+          var isValidHost = [
+            "api.rangosemfila.com.br",
+            "www.api.rangosemfila.com.br",
+            "s3.sa-east-1.amazonaws.com",
+            "www.s3.sa-east-1.amazonaws.com"
+          ].contains(host); // <-- allow only hosts in array
+          return isValidHost;
+        });
+        return dioClient;
+      };
+      var url = 'https://s3.sa-east-1.amazonaws.com/rango.dashboard/$file';
       await dio.download(
-        'https://s3.sa-east-1.amazonaws.com/rango.dashboard/$file',
+        url,
         '$pathToSave',
         cancelToken: cancelToken,
+        options: Options(
+          followRedirects: false,
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
         onReceiveProgress: (rcv, total) {
           setState(() {
             percentage = ((rcv / total) * 100);
@@ -163,11 +185,16 @@ class _DownloaderState extends State<Downloader> {
     });
     for (int i = 0; i < filesToDownload.length; i++) {
       if (filesToDownload[i].contains('.zip') && _isWindows11()) {
-        filesToDownload[i] = 'compiled/compiled-win-11.zip';
+        filesToDownload[i] = 'compiled-win-11.zip';
       }
       await download(
-          filesToDownload[i], '${app}\\rango\\${filesToDownload[i]}');
+          (filesToDownload[i].contains('.zip') ? 'compiled/' : '') +
+              filesToDownload[i],
+          '${app}\\rango\\${filesToDownload[i]}');
     }
+    setState(() {
+      showUnzipOptions = true;
+    });
   }
 
   Future<void> launch() async {
@@ -214,13 +241,6 @@ class _DownloaderState extends State<Downloader> {
     if (versionExists && dashExists) {
       final contents = await verison.readAsString();
       var json = jsonDecode(contents);
-      print(json["release"]);
-      print(response.data["release"]);
-      print(response.data["files"]);
-      print(json["release"] == response.data["release"]);
-      print(Platform.operatingSystem);
-      print(Platform.operatingSystemVersion);
-      print(_isWindows11());
       if (json["release"] == response.data["release"]) {
         return false;
       } else {
@@ -279,7 +299,7 @@ class _DownloaderState extends State<Downloader> {
     try {
       deleteRemainArchives();
       if (filesToDownload.isEmpty) {
-        syncInit();
+        await syncInit();
       } else {
         await downloadFiles();
       }
