@@ -128,9 +128,20 @@ class _DownloaderState extends State<Downloader> {
     });
     var shell = Shell();
     var path = '${app}\\rango\\${getZipArchiveName()}';
+
     await shell.run('''
         @echo off
-        tar -xf $path -C $app\\rango
+        set temp_dir=%TEMP%\mytempdir_rango123
+        mkdir "%temp_dir%"
+
+        :: Extract the contents of the tar file into the temporary directory
+        tar -xf $path -C "%temp_dir%"
+
+        :: Move each file from the temporary directory to the desired location
+        xcopy  "%temp_dir%\\*" "$app\\rango\\" /s /e /i /y
+
+        :: Clean up the temporary directory
+        rmdir /s /q "%temp_dir%"
     ''');
     setState(() {
       unzipping = false;
